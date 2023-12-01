@@ -59,7 +59,7 @@ const simple = Effect.gen(function*($) {
 
 // This are the ready-to-use dependencies of our program.
 const MainLive = Layer.mergeAll(
-  Layer.use(HackerNews.layer, HttpClient.client.layer),
+  Layer.provide(HackerNews.layer, HttpClient.client.layer),
   Telemetry.layer,
   BunContext.layer
 )
