@@ -18,7 +18,7 @@ After ensuring that `bun` is installed, it's time to pull in the package depende
 bun install
 ```
 
-## Obseravilibt Infrastructure
+## Observability Infrastructure
 
 This repository includes a minimal complementary [observability infrastructure stack](./docker-compose.yaml) featuring:
 
