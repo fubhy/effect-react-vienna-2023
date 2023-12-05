@@ -44,11 +44,15 @@ services:
     image: grafana/grafana:latest
     volumes:
       - ./infra/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./infra/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
+      - ./infra/dashboards:/var/lib/grafana/dashboards
+
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
       - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/hackernews.json
     ports:
       - "3030:3000"
 
