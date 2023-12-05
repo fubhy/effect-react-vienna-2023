@@ -30,7 +30,7 @@ const fallible = Effect.gen(function*($) {
 
 // Recovering from an error. Note how the error types have been eliminated from the type signature.
 const program = fallible.pipe(Effect.catchTags({
-  // We can recover from the "NumberTooLowError" by returning the lowest possible number.
+  // We can recover from the "NumberTooLowError" by retrying. If retrying is unsuccessful, we let the program die.
   NumberTooLowError: (_) => Effect.retry(_, RetryPolicy).pipe(Effect.orDie),
   // We can recover from the "UnluckyNumberError" error by returning a "lucky" number instead.
   UnluckyNumberError: (_) => Effect.succeed(42)
