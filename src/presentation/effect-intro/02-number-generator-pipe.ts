@@ -8,8 +8,8 @@ class NumberTooLowError extends Data.TaggedError("NumberTooLowError")<{}> {}
 const random = Random.nextIntBetween(1, 100).pipe(
   Effect.andThen(pipe(
     Match.type<number>(),
-    Match.when((_) => _ < 5, (_) => Effect.fail(new NumberTooLowError())),
-    Match.when((_) => _ === 13, (_) => Effect.fail(new UnluckyNumberError())),
+    Match.when((_) => _ < 50, (_) => new NumberTooLowError()),
+    Match.when((_) => _ === 13, (_) => new UnluckyNumberError()),
     Match.orElse((_) => Effect.succeed(_))
   ))
 )
