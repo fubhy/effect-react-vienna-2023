@@ -1,4 +1,4 @@
-import { Data, Effect, pipe, Random, Schedule } from "effect"
+import { Data, Duration, Effect, pipe, Random, Schedule } from "effect"
 
 // Composable schedules.
 const RetryPolicy = pipe(
@@ -7,7 +7,9 @@ const RetryPolicy = pipe(
   // With a maximum of 3 seconds delay between retries.
   Schedule.either(Schedule.spaced("3 seconds")),
   // And continue until a total of 30 seconds has elapsed.
-  Schedule.upTo("30 seconds")
+  Schedule.upTo("30 seconds"),
+  // Logging the retry attempts for debugging purposes.
+  Schedule.tapOutput(([duration, count]) => Effect.log(`Retrying in ${Duration.format(duration)} (attempt ${count})`))
 )
 
 // A tagged error class.
@@ -16,7 +18,7 @@ class NumberTooLowError extends Data.TaggedError("NumberTooLowError")<{
   value: number
 }> {
   toString() {
-    return `NumberTooLowError(${this.value.toString()})`
+    return `NumberTooLowError(${this.value})`
   }
 }
 
@@ -27,7 +29,7 @@ const random = Effect.gen(function*($) {
     return yield* $(new UnluckyNumberError())
   }
 
-  if (value < 5) {
+  if (value < 50) {
     return yield* $(new NumberTooLowError({ value }))
   }
 
@@ -37,6 +39,7 @@ const random = Effect.gen(function*($) {
 // Recovering from an error. Note how the caught `UnluckyNumberError` error type has been eliminated from the type signature.
 // Although the `NumberTooLowError` error type is being retried it might not actually recover, hence it remains in the type signature.
 const program = random.pipe(
+  Effect.tapError((_) => Effect.log(`Error: ${_}`)),
   // We can recover from the "UnluckyNumberError" error by returning a "lucky" number instead.
   Effect.catchTag("UnluckyNumberError", () => Effect.succeed(42)),
   // At this point, only the `NumberTooLowError` remains. Retry it according to our schedule.
@@ -47,4 +50,4 @@ const program = random.pipe(
 )
 
 // Unlike Promises, which are eagerly executed, Effects are descriptions of programs, they are not executed until we run them.
-Effect.runSync(program)
+await Effect.runPromise(program)

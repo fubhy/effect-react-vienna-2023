@@ -12,7 +12,7 @@ class NumberTooLowError extends Data.TaggedError("NumberTooLowError")<{
   value: number
 }> {
   toString() {
-    return `NumberTooLowError(${this.value.toString()})`
+    return `NumberTooLowError(${this.value})`
   }
 }
 
@@ -31,6 +31,7 @@ const random = Effect.gen(function*($) {
 
 // This is a single effect ...
 const single = random.pipe(
+  Effect.tapError((_) => Effect.log(`Error: ${_}`)),
   Effect.catchTag("UnluckyNumberError", () => Effect.succeed(42)),
   Effect.retry(RetryPolicy),
   Effect.orDieWith((_) => `We tried our best but your number is still too low: ${_}`),
