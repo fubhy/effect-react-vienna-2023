@@ -1,4 +1,4 @@
-import { Data, Effect, pipe, Predicate, Random, Schedule } from "effect"
+import { Data, Effect, pipe, Random, Schedule } from "effect"
 
 // Composable schedules.
 const RetryPolicy = pipe(
@@ -15,9 +15,8 @@ class UnluckyNumberError extends Data.TaggedError("UnluckyNumberError")<{}> {}
 class NumberTooLowError extends Data.TaggedError("NumberTooLowError")<{
   value: number
 }> {
-  toString(): string
-  toString(): string {
-    return this.value.toString()
+  toString() {
+    return `NumberTooLowError(${this.value.toString()})`
   }
 }
 
@@ -35,18 +34,15 @@ const random = Effect.gen(function*($) {
   return value
 })
 
-// Recovering from an error. Note how the error types have been eliminated from the type signature.
+// Recovering from an error. Note how the caught `UnluckyNumberError` error type has been eliminated from the type signature.
+// Although the `NumberTooLowError` error type is being retried it might not actually recover, hence it remains in the type signature.
 const program = random.pipe(
-  Effect.retry(RetryPolicy.pipe(
-    // Only retry in case of a "NumberTooLowError".
-    Schedule.whileInput(Predicate.isTagged("NumberTooLowError"))
-  )),
-  Effect.catchTags({
-    // If retrying (see above) is unsuccessful, we let the program die.
-    NumberTooLowError: (_) => Effect.dieMessage("We tried our best but your number is still too low"),
-    // We can recover from the "UnluckyNumberError" error by returning a "lucky" number instead.
-    UnluckyNumberError: (_) => Effect.succeed(42)
-  }),
+  // We can recover from the "UnluckyNumberError" error by returning a "lucky" number instead.
+  Effect.catchTag("UnluckyNumberError", () => Effect.succeed(42)),
+  // At this point, only the `NumberTooLowError` remains. Retry it according to our schedule.
+  Effect.retry(RetryPolicy),
+  // If retrying is unsuccessful, we convert the error to a defect.
+  Effect.orDieWith((_) => `We tried our best but your number is still too low: ${_}`),
   Effect.tap((_) => Effect.log(`Your number is: ${_}`))
 )
 

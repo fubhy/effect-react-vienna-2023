@@ -1,15 +1,20 @@
-import { Data, Effect, pipe, Predicate, Random, ReadonlyArray, Schedule, ScheduleDecision } from "effect"
+import { Data, Duration, Effect, pipe, Random, ReadonlyArray, Schedule } from "effect"
 
 const RetryPolicy = pipe(
   Schedule.exponential("100 millis", 2),
   Schedule.either(Schedule.spaced("3 seconds")),
-  Schedule.upTo("30 seconds")
+  Schedule.upTo("30 seconds"),
+  Schedule.tapOutput(([duration, count]) => Effect.log(`Retrying in ${Duration.format(duration)} (attempt ${count})`))
 )
 
 class UnluckyNumberError extends Data.TaggedError("UnluckyNumberError")<{}> {}
 class NumberTooLowError extends Data.TaggedError("NumberTooLowError")<{
   value: number
-}> {}
+}> {
+  toString() {
+    return `NumberTooLowError(${this.value.toString()})`
+  }
+}
 
 const random = Effect.gen(function*($) {
   const value = yield* $(Random.nextIntBetween(1, 100))
@@ -17,7 +22,7 @@ const random = Effect.gen(function*($) {
     return yield* $(new UnluckyNumberError())
   }
 
-  if (value < 5) {
+  if (value < 50) {
     return yield* $(new NumberTooLowError({ value }))
   }
 
@@ -26,21 +31,9 @@ const random = Effect.gen(function*($) {
 
 // This is a single effect ...
 const single = random.pipe(
-  Effect.retry(RetryPolicy.pipe(
-    Schedule.whileInput(Predicate.isTagged("NumberTooLowError")),
-    Schedule.passthrough,
-    Schedule.onDecision((error, decision) => {
-      if (ScheduleDecision.isDone(decision)) {
-        return Effect.log(`Not retrying after encountering a ${error} error`)
-      }
-
-      return Effect.log(`Retrying after encountering a ${error} error`)
-    })
-  )),
-  Effect.catchTags({
-    NumberTooLowError: (_) => Effect.dieMessage("We tried our best but your number is still too low"),
-    UnluckyNumberError: (_) => Effect.succeed(42)
-  }),
+  Effect.catchTag("UnluckyNumberError", () => Effect.succeed(42)),
+  Effect.retry(RetryPolicy),
+  Effect.orDieWith((_) => `We tried our best but your number is still too low: ${_}`),
   Effect.tap((_) => Effect.log(`Your number is: ${_}`))
 )
 
